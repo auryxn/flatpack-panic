@@ -44,7 +44,7 @@ namespace FlatpackPanic
             GUILayout.Label("On foot: first-person. In van: third-person chase camera.", _small);
             GUILayout.Label("W/S or ↑/↓ gas/reverse · A/D or ←/→ steer · Space brake", _small);
             GUILayout.Label("Mouse look sensitivity increased · Shift sprint · F only near driver door", _small);
-            GUILayout.Label("E grab/drop/load/take box · R reset", _small);
+            GUILayout.Label("E grab/drop/load/take box · R reset · N next mission", _small);
             GUILayout.Label("Loop: pick cargo → rear van bay + E to load → drive to green beacon → behind van + E to take → drop in green zone.", _small);
             GUILayout.EndArea();
         }
@@ -90,7 +90,10 @@ namespace FlatpackPanic
             };
 
             var text = $"DELIVERY COMPLETE!\n\nTime: {g.ElapsedSeconds:0}s\nDamage: {g.TotalDamage:0.0}\nRank: {g.Rank}\n\nPress R to restart";
+            if (Input.GetKeyDown(KeyCode.N)) g.NewDeliveryTarget();
             GUI.Box(new Rect(Screen.width / 2f - 240f, Screen.height / 2f - 140f, 480f, 280f), text, style);
+            var nstyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 16, normal = { textColor = Color.green } };
+            GUI.Label(new Rect(Screen.width / 2f - 140f, Screen.height / 2f + 120f, 280f, 30f), "N — new delivery mission", nstyle);
         }
 
         private void Init()

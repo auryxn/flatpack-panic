@@ -11,6 +11,7 @@ namespace FlatpackPanic
         public Transform DeliveryZone { get; private set; }
         public VanController Van { get; private set; }
         public FirstPersonPlayer Player { get; private set; }
+        public CityGenerator City { get; private set; }
 
         private Material _road, _grass, _warehouse, _apartment, _cardboard, _blue, _yellow, _green, _red, _cyan, _black;
         private float _startedAt;
@@ -49,7 +50,7 @@ namespace FlatpackPanic
             Instance = this;
             _startedAt = Time.time;
             CreateMaterials();
-            BuildWorld();
+            BuildCity();
             BuildVan();
             BuildFirstPersonPlayer();
             BuildCargo();
@@ -59,7 +60,15 @@ namespace FlatpackPanic
 
         public void ResetCargo()
         {
-            var points = new[] { new Vector3(-25, 1.2f, -8), new Vector3(-25, 1.2f, -5), new Vector3(-25, 1.2f, -2) };
+            // Spawn cargo back at IKEA pickup zone
+            var points = new[] { new Vector3(-4, 1.2f, -4), new Vector3(-4, 1.2f, 0), new Vector3(-4, 1.2f, 4) };
+            if (City != null)
+            {
+                var ikea = City.IkeaPosition;
+                points[0] = ikea + new Vector3(-4, 1.2f, -4);
+                points[1] = ikea + new Vector3(-4, 1.2f, 0);
+                points[2] = ikea + new Vector3(-4, 1.2f, 4);
+            }
             for (var i = 0; i < Cargo.Count; i++)
             {
                 Cargo[i].RemoveFromVan(points[i], Quaternion.Euler(0, i * 17f, 0));
@@ -69,6 +78,26 @@ namespace FlatpackPanic
                 Cargo[i].ResetDamage();
             }
             _startedAt = Time.time;
+        }
+
+        // After delivery, generate a new target
+        public void NewDeliveryTarget()
+        {
+            if (City != null)
+            {
+                City.PickRandomDeliveryTarget();
+                UpdateDeliveryZonePosition(City.DeliveryTargetPosition);
+            }
+        }
+
+        private void UpdateDeliveryZonePosition(Vector3 aptPos)
+        {
+            if (DeliveryZone != null && aptPos != Vector3.zero)
+            {
+                // Place zone on the street in front of the apartment
+                var streetPos = aptPos + new Vector3(8, 0.15f, 0);
+                DeliveryZone.position = streetPos;
+            }
         }
 
         public bool IsCargoInVan(CargoBox cargo)
@@ -135,35 +164,50 @@ namespace FlatpackPanic
 
         private static Material Mat(string name, Color color) { var m = new Material(Shader.Find("Standard")); m.name = name; m.color = color; return m; }
 
-        private void BuildWorld()
+        private void BuildCity()
         {
-            Cube("Ground", Vector3.zero, new Vector3(120, .2f, 80), _grass, true);
-            Cube("Main road", new Vector3(0, .06f, 0), new Vector3(100, .08f, 9), _road, true);
-            Cube("Cross road", new Vector3(15, .07f, 0), new Vector3(10, .08f, 70), _road, true);
-            PickupZone = Cube("Warehouse pickup zone", new Vector3(-30, .15f, -13), new Vector3(15, .15f, 8), _yellow, true).transform;
-            Cube("Flatpack Warehouse", new Vector3(-35, 3, -24), new Vector3(20, 6, 12), _warehouse, true);
-            Cube("Warehouse sign", new Vector3(-35, 7, -17.6f), new Vector3(14, 2, .3f), _yellow, true);
-            DeliveryZone = Cube("Delivery zone — UNLOAD HERE", new Vector3(36, .15f, 18), new Vector3(15, .16f, 11), _green, true).transform;
-            Cube("Delivery beacon", new Vector3(36, 3.2f, 18), new Vector3(.55f, 6f, .55f), _green, true);
-            Cube("Delivery arrow", new Vector3(36, 6.55f, 18), new Vector3(4.8f, .35f, 1.2f), _yellow, true);
-            Cube("Tiny Apartment Block", new Vector3(42, 6, 27), new Vector3(18, 12, 10), _apartment, true);
-            Cube("Door too small", new Vector3(36, 1.7f, 21.8f), new Vector3(2.2f, 3.2f, .3f), _road, true);
+            var cityGo = new GameObject("CityGenerator");
+            City = cityGo.AddComponent<CityGenerator>();
+            City.RoadMat = _road;
+            City.SidewalkMat = _apartment;
+            City.GrassMat = _grass;
+            City.BuildingMat = _apartment;
 
-            for (var i = 0; i < 10; i++)
-            {
-                var x = -10 + i * 9;
-                var z = i % 2 == 0 ? -25 : 28;
-                var h = 4f + (i % 5) * 1.4f;
-                Cube("Toy city block", new Vector3(x, h / 2f, z), new Vector3(6, h, 6), _apartment, true);
-            }
+            City.BlocksX = 6;
+            City.BlocksZ = 5;
+            City.BlockSize = 16f;
+            City.RoadWidth = 9f;
+            City.Generate();
 
-            for (var i = 0; i < 8; i++) Cube("Traffic cone", new Vector3(-5 + i * 2.2f, .55f, 5.8f), new Vector3(.55f, 1.1f, .55f), _yellow, false);
+            // Make the IKEA pickup zone yellow
+            var ikea = City.IkeaPosition;
+            PickupZone = Cube("IKEA pickup zone", ikea + new Vector3(0, 0.15f, 8), new Vector3(10, 0.15f, 5), _yellow, true).transform;
+
+            // Delivery zone at the first random target
+            var apt = City.DeliveryTargetPosition;
+            var dzPos = apt != Vector3.zero ? apt + new Vector3(8, 0.15f, 0) : new Vector3(20, 0.15f, 10);
+            DeliveryZone = Cube("Delivery zone", dzPos, new Vector3(8, 0.15f, 8), _green, true).transform;
+
+            // Green beacon
+            Cube("Delivery beacon", dzPos + new Vector3(0, 3.2f, 0), new Vector3(.55f, 6f, .55f), _green, true);
+            Cube("Delivery arrow", dzPos + new Vector3(0, 6.55f, 0), new Vector3(4.8f, .35f, 1.2f), _yellow, true);
+
+            // Warehouse building over IKEA
+            Cube("Flatpack Warehouse main", ikea + new Vector3(0, 3, 0), new Vector3(14, 6, 10), _warehouse, true);
+            Cube("Warehouse sign", ikea + new Vector3(0, 7, 5.5f), new Vector3(10, 1.5f, .3f), _yellow, true);
         }
 
         private void BuildVan()
         {
             var root = new GameObject("First Person Delivery Van");
             root.transform.SetPositionAndRotation(new Vector3(-17, 1.05f, -2), Quaternion.Euler(0, 90, 0));
+
+            // Position van near IKEA
+            if (City != null)
+            {
+                var spawnPos = City.IkeaPosition + new Vector3(5, 1.05f, -4);
+                root.transform.position = spawnPos;
+            }
 
             var rb = root.AddComponent<Rigidbody>();
             rb.mass = 1350f;
@@ -172,11 +216,10 @@ namespace FlatpackPanic
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-            AddVanCollider(root, new Vector3(0, -0.55f, 0f), new Vector3(3.35f, 0.32f, 6.45f)); // chassis/floor
-            AddVanCollider(root, new Vector3(0, 0.15f, 2.25f), new Vector3(3.25f, 1.9f, 2.1f)); // cabin
-            AddVanCollider(root, new Vector3(-1.68f, 0.25f, -1.25f), new Vector3(0.18f, 1.35f, 3.35f)); // left cargo wall
-            AddVanCollider(root, new Vector3(1.68f, 0.25f, -1.25f), new Vector3(0.18f, 1.35f, 3.35f)); // right cargo wall
-            // Rear is intentionally open so boxes can be carried into the cargo bay.
+            AddVanCollider(root, new Vector3(0, -0.55f, 0f), new Vector3(3.35f, 0.32f, 6.45f));
+            AddVanCollider(root, new Vector3(0, 0.15f, 2.25f), new Vector3(3.25f, 1.9f, 2.1f));
+            AddVanCollider(root, new Vector3(-1.68f, 0.25f, -1.25f), new Vector3(0.18f, 1.35f, 3.35f));
+            AddVanCollider(root, new Vector3(1.68f, 0.25f, -1.25f), new Vector3(0.18f, 1.35f, 3.35f));
 
             var centerOfMass = new GameObject("CenterOfMass").transform;
             centerOfMass.SetParent(root.transform, false);
@@ -237,7 +280,9 @@ namespace FlatpackPanic
         private void BuildFirstPersonPlayer()
         {
             var player = new GameObject("First Person Player — Borya Barrel POV");
-            player.transform.position = new Vector3(-24, 1.2f, -13);
+            // Spawn at IKEA
+            var spawnPos = City != null ? City.IkeaPosition + new Vector3(-4, 1.2f, -4) : new Vector3(-24, 1.2f, -13);
+            player.transform.position = spawnPos;
             var rb = player.AddComponent<Rigidbody>(); rb.mass = 95f; rb.freezeRotation = true;
             var capsule = player.AddComponent<CapsuleCollider>(); capsule.height = 1.65f; capsule.radius = .48f; capsule.center = new Vector3(0, .82f, 0);
             Player = player.AddComponent<FirstPersonPlayer>();
@@ -245,17 +290,17 @@ namespace FlatpackPanic
             var body = GameObject.CreatePrimitive(PrimitiveType.Capsule); body.name = "Borya visible belly"; body.transform.SetParent(player.transform, false);
             body.transform.localPosition = new Vector3(0, .72f, 0); body.transform.localScale = new Vector3(1.05f, .55f, 1.05f); body.GetComponent<Renderer>().material = _red; Destroy(body.GetComponent<Collider>());
 
-            // Tall skinny navigator as visible NPC placeholder.
-            var sanya = new GameObject("Slender Sanya NPC placeholder"); sanya.transform.position = new Vector3(-22, 1.4f, -13);
+            var sanya = new GameObject("Slender Sanya NPC placeholder"); sanya.transform.position = player.transform.position + new Vector3(2, 0, 0);
             var sbody = GameObject.CreatePrimitive(PrimitiveType.Capsule); sbody.name = "Slender Sanya tall body"; sbody.transform.SetParent(sanya.transform, false); sbody.transform.localPosition = new Vector3(0, 1.35f, 0); sbody.transform.localScale = new Vector3(.55f, 1.35f, .55f); sbody.GetComponent<Renderer>().material = _cyan; Destroy(sbody.GetComponent<Collider>());
             var head = GameObject.CreatePrimitive(PrimitiveType.Sphere); head.name = "long confused head"; head.transform.SetParent(sanya.transform, false); head.transform.localPosition = new Vector3(0, 2.85f, 0); head.transform.localScale = new Vector3(.5f, .7f, .5f); head.GetComponent<Renderer>().material = _yellow; Destroy(head.GetComponent<Collider>());
         }
 
         private void BuildCargo()
         {
-            CreateCargo("PAX cursed wardrobe", new Vector3(-29, 1.3f, -9), new Vector3(1.2f, 1, 5.5f), 52f);
-            CreateCargo("Mirror DO NOT DROP", new Vector3(-27, 1.15f, -5.5f), new Vector3(.45f, 1.6f, 4), 25f);
-            CreateCargo("Mystery screws box", new Vector3(-25, 1.1f, -2.5f), new Vector3(2, 1.5f, 1.8f), 34f);
+            var basePos = City != null ? City.IkeaPosition + new Vector3(-4, 1.2f, -4) : new Vector3(-29, 1.3f, -9);
+            CreateCargo("PAX cursed wardrobe", basePos, new Vector3(1.2f, 1, 5.5f), 52f);
+            CreateCargo("Mirror DO NOT DROP", basePos + new Vector3(2, -0.15f, 3.5f), new Vector3(.45f, 1.6f, 4), 25f);
+            CreateCargo("Mystery screws box", basePos + new Vector3(4, -0.2f, 1.5f), new Vector3(2, 1.5f, 1.8f), 34f);
         }
 
         private void CreateCargo(string label, Vector3 pos, Vector3 scale, float mass)
