@@ -168,10 +168,13 @@ namespace FlatpackPanic
         {
             var cityGo = new GameObject("CityGenerator");
             City = cityGo.AddComponent<CityGenerator>();
-            City.RoadMat = _road;
-            City.SidewalkMat = _apartment;
-            City.GrassMat = _grass;
-            City.BuildingMat = _apartment;
+
+            // Try to load prefabs from Resources (SimplePoly City)
+            City.BuildingPrefabs = Resources.LoadAll<GameObject>("SimplePoly City - Low Poly Assets/Prefabs/Buildings");
+            City.HousePrefabs = Resources.LoadAll<GameObject>("SimplePoly City - Low Poly Assets/Prefabs/Buildings");
+            City.RoadTilePrefabs = Resources.LoadAll<GameObject>("SimplePoly City - Low Poly Assets/Prefabs/Roads");
+            City.TreePrefab = Resources.Load<GameObject>("SimplePoly City - Low Poly Assets/Prefabs/Natures/Big Tree");
+            City.StreetLightPrefab = Resources.Load<GameObject>("SimplePoly City - Low Poly Assets/Prefabs/Props/Street Light");
 
             City.BlocksX = 6;
             City.BlocksZ = 5;
