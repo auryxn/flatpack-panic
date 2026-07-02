@@ -97,8 +97,11 @@ namespace FlatpackPanic
 
             if (IsDriving && _currentVan != null)
             {
-                // Driving uses a third-person chase camera so the player can actually see the road and the van.
+                // Pass look input to van for third-person camera orbit
+                _currentVan.SetLookInput(mx, my);
+                // Keep player transform aligned with van
                 transform.rotation = Quaternion.Euler(0, _currentVan.transform.eulerAngles.y, 0);
+                // Smooth chase camera
                 PlayerCamera.transform.position = Vector3.Lerp(PlayerCamera.transform.position, _currentVan.ThirdPersonCameraPosition, Time.deltaTime * 10f);
                 PlayerCamera.transform.rotation = Quaternion.Slerp(PlayerCamera.transform.rotation, _currentVan.ThirdPersonCameraRotation, Time.deltaTime * 10f);
                 return;

@@ -202,11 +202,12 @@ namespace FlatpackPanic
             var root = new GameObject("First Person Delivery Van");
             root.transform.SetPositionAndRotation(new Vector3(-17, 1.05f, -2), Quaternion.Euler(0, 90, 0));
 
-            // Position van near IKEA
+            // Position van on the road, not inside a building
             if (City != null)
             {
-                var spawnPos = City.IkeaPosition + new Vector3(5, 1.05f, -4);
+                var spawnPos = City.VanSpawnRoadPos + new Vector3(0, 1.05f, 0);
                 root.transform.position = spawnPos;
+                root.transform.rotation = Quaternion.identity;
             }
 
             var rb = root.AddComponent<Rigidbody>();
@@ -280,8 +281,8 @@ namespace FlatpackPanic
         private void BuildFirstPersonPlayer()
         {
             var player = new GameObject("First Person Player — Borya Barrel POV");
-            // Spawn at IKEA
-            var spawnPos = City != null ? City.IkeaPosition + new Vector3(-4, 1.2f, -4) : new Vector3(-24, 1.2f, -13);
+            // Spawn on the sidewalk near the van spawn, not inside a building
+            var spawnPos = City != null ? City.VanSpawnRoadPos + new Vector3(2, 1.2f, 0) : new Vector3(-24, 1.2f, -13);
             player.transform.position = spawnPos;
             var rb = player.AddComponent<Rigidbody>(); rb.mass = 95f; rb.freezeRotation = true;
             var capsule = player.AddComponent<CapsuleCollider>(); capsule.height = 1.65f; capsule.radius = .48f; capsule.center = new Vector3(0, .82f, 0);
@@ -297,7 +298,8 @@ namespace FlatpackPanic
 
         private void BuildCargo()
         {
-            var basePos = City != null ? City.IkeaPosition + new Vector3(-4, 1.2f, -4) : new Vector3(-29, 1.3f, -9);
+            // Spawn cargo on the sidewalk in front of IKEA entrance
+            var basePos = City != null ? City.IkeaPosition + new Vector3(-2, 1.2f, 6) : new Vector3(-29, 1.3f, -9);
             CreateCargo("PAX cursed wardrobe", basePos, new Vector3(1.2f, 1, 5.5f), 52f);
             CreateCargo("Mirror DO NOT DROP", basePos + new Vector3(2, -0.15f, 3.5f), new Vector3(.45f, 1.6f, 4), 25f);
             CreateCargo("Mystery screws box", basePos + new Vector3(4, -0.2f, 1.5f), new Vector3(2, 1.5f, 1.8f), 34f);
