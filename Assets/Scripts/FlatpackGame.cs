@@ -11,7 +11,7 @@ namespace FlatpackPanic
         public Transform DeliveryZone { get; private set; }
         public VanController Van { get; private set; }
         public FirstPersonPlayer Player { get; private set; }
-        public CityGenerator City { get; private set; }
+        public CityGeneratorV2 City { get; private set; }
 
         private Material _road, _grass, _warehouse, _apartment, _cardboard, _blue, _yellow, _green, _red, _cyan, _black;
         private float _startedAt;
@@ -167,19 +167,12 @@ namespace FlatpackPanic
         private void BuildCity()
         {
             var cityGo = new GameObject("CityGenerator");
-            City = cityGo.AddComponent<CityGenerator>();
-
-            // Load prefabs from Resources (copied from SimplePoly City)
-            City.BuildingPrefabs = Resources.LoadAll<GameObject>("Prefabs/Buildings");
-            City.HousePrefabs = Resources.LoadAll<GameObject>("Prefabs/Buildings");
-            City.RoadTilePrefabs = Resources.LoadAll<GameObject>("Prefabs/Roads");
-            City.TreePrefab = Resources.Load<GameObject>("Prefabs/Natures/Natures_Big Tree");
-            City.StreetLightPrefab = Resources.Load<GameObject>("Prefabs/Props/Props_Street Light");
-
+            City = cityGo.AddComponent<CityGeneratorV2>();
+            // CityGeneratorV2 auto-loads prefabs from Resources internally
             City.BlocksX = 6;
             City.BlocksZ = 5;
-            City.BlockSize = 16f;
-            City.RoadWidth = 9f;
+            City.BlockSize = 24f;
+            City.RoadWidth = 7f;
             City.Generate();
 
             // Make the IKEA pickup zone yellow
